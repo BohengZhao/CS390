@@ -23,8 +23,8 @@ IMAGE_SIZE = 784
 # ALGORITHM = "guesser"
 
 
-ALGORITHM = "custom_net"
-# ALGORITHM = "tf_net"
+#ALGORITHM = "custom_net"
+ALGORITHM = "tf_net"
 
 
 class NeuralNetwork_2Layer():
@@ -52,7 +52,7 @@ class NeuralNetwork_2Layer():
 
     # Activation function ReLU
     def __ReLU(self, x):
-        return np.maximum(0, x)
+        return np.maximum(x, 0)
 
     # Activation prime function of ReLU
     def __ReLUDerivative(self, x):
@@ -74,7 +74,7 @@ class NeuralNetwork_2Layer():
             return self.lr
 
     # Training with backpropagation.
-    def train(self, xVals, yVals, epochs=10, minibatches=True, mbs=40):
+    def train(self, xVals, yVals, epochs=1, minibatches=True, mbs=40):
         if minibatches is True:
             for epoch in range(0, epochs):
                 batch_x = self.__batchGenerator(xVals, mbs)
@@ -87,7 +87,7 @@ class NeuralNetwork_2Layer():
                     if self.activation == "Sigmoid":
                         L2d = L2e * self.__sigmoidDerivative(L2out)
                     elif self.activation == "ReLU":
-                        L2d = L2e * self.__ReLUDerivative(np.dot(L1out, self.W2))
+                        L2d = L2e * self.__ReLUDerivative(L2out)
                     else:
                         raise Exception("NO Activation function specified")
 
@@ -96,8 +96,8 @@ class NeuralNetwork_2Layer():
                     if self.activation == "Sigmoid":
                         L1d = L1e * self.__sigmoidDerivative(L1out)
                     elif self.activation == "ReLU":
-                        L1d = L1e * self.__ReLUDerivative(np.dot(small_batch_x, self.W1))
-
+                        L1d = L1e * self.__ReLUDerivative(L1out)
+                    x = small_batch_x.T.dot(L1d)
                     L1a = small_batch_x.T.dot(L1d) * self.__learningRate(epoch, epochs)
                     L2a = L1out.T.dot(L2d) * self.__learningRate(epoch, epochs)
                     self.W1 -= L1a
@@ -105,8 +105,7 @@ class NeuralNetwork_2Layer():
                 print("Epoch: ", epoch + 1)
         else:
             for epoch in range(0, epochs):
-                for sample in range(0, 1000):
-                #for sample in range(0, xVals.shape[0]):
+                for sample in range(0, xVals.shape[0]):
                     L1out, L2out = self.__forward(xVals[[sample], :])
                     L2e = L2out - yVals[[sample], :]
                     L2d = L2e * self.__sigmoidDerivative(L2out)
@@ -176,15 +175,19 @@ def trainModel(data):
     if ALGORITHM == "guesser":
         return None  # Guesser has no model, as it is just guessing.
     elif ALGORITHM == "custom_net":
+        print("Building and training Custom_NN.")
         custom_nn = NeuralNetwork_2Layer(IMAGE_SIZE, 10, 512, activationFunc="ReLU")
         custom_nn.train(xTrain, yTrain, minibatches=True)
-        print("Building and training Custom_NN.")
-        print("Not yet implemented.")  # TODO: Write code to build and train your custom neural net.
         return custom_nn
     elif ALGORITHM == "tf_net":
         print("Building and training TF_NN.")
-        print("Not yet implemented.")  # TODO: Write code to build and train your keras neural net.
-        return None
+        model = keras.Sequential([tf.keras.layers.Flatten(), tf.keras.layers.Dense(512, activation=tf.nn.relu),
+                                  tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
+        lossType = keras.losses.categorical_crossentropy
+        inShape = (IMAGE_SIZE,)
+        model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
+        model.fit(xTrain, yTrain, epochs=10)
+        return model
     else:
         raise ValueError("Algorithm not recognized.")
 
@@ -197,8 +200,7 @@ def runModel(data, model):
         return model.predict(data)
     elif ALGORITHM == "tf_net":
         print("Testing TF_NN.")
-        print("Not yet implemented.")  # TODO: Write code to run your keras neural net.
-        return None
+        return model.predict(data)
     else:
         raise ValueError("Algorithm not recognized.")
 
