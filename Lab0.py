@@ -20,10 +20,10 @@ NUM_CLASSES = 10
 IMAGE_SIZE = 784
 
 # Use these to set the algorithm to use.
-ALGORITHM = "guesser"
+# ALGORITHM = "guesser"
 
 
-# ALGORITHM = "custom_net"
+ALGORITHM = "custom_net"
 # ALGORITHM = "tf_net"
 
 
@@ -50,8 +50,24 @@ class NeuralNetwork_2Layer():
             yield l[i: i + n]
 
     # Training with backpropagation.
-    def train(self, xVals, yVals, epochs=100000, minibatches=True, mbs=100):
-        pass  # TODO: Implement backprop. allow minibatches. mbs should specify the size of each minibatch.
+    def train(self, xVals, yVals, epochs=10, minibatches=True, mbs=100):
+        if minibatches is True:
+            pass
+        else:
+            for echo in range(0, epochs):
+                for sample in range(0, xVals.shape[0]):
+                    L1out, L2out = self.__forward(xVals[[sample], :])
+                    L2e = L2out - yVals[[sample], :]
+                    intermidiate = self.__sigmoidDerivative(np.dot(L1out, self.W2))
+                    L2d = L2e * self.__sigmoidDerivative(np.dot(L1out, self.W2))
+                    L1e = np.dot(L2d, self.W2)
+                    L1d = L1e * self.__sigmoidDerivative(np.dot(xVals[[sample], :], self.W1))
+                    L1a = xVals[[sample], :].T.dot(L1d) * self.lr
+                    L2a = L1out.T.dot(L2d) * self.lr
+                    self.W1 -= L1a
+                    self.W2 -= L2a
+
+        
 
     # Forward pass.
     def __forward(self, input):
@@ -89,6 +105,10 @@ def getRawData():
 
 def preprocessData(raw):
     ((xTrain, yTrain), (xTest, yTest)) = raw  # TODO: Add range reduction here (0-255 ==> 0.0-1.0).
+    xTrain = xTrain.reshape((xTrain.shape[0], xTrain.shape[1] * xTrain.shape[2]))
+    xTest = xTest.reshape((xTest.shape[0], xTest.shape[1] * xTest.shape[2]))
+    xTrain = xTrain / 255.0
+    xTest = xTest / 255.0
     yTrainP = to_categorical(yTrain, NUM_CLASSES)
     yTestP = to_categorical(yTest, NUM_CLASSES)
     print("New shape of xTrain dataset: %s." % str(xTrain.shape))
@@ -103,9 +123,11 @@ def trainModel(data):
     if ALGORITHM == "guesser":
         return None  # Guesser has no model, as it is just guessing.
     elif ALGORITHM == "custom_net":
+        custom_nn = NeuralNetwork_2Layer(IMAGE_SIZE, 10, 512)
+        custom_nn.train(xTrain, yTrain, minibatches=False)
         print("Building and training Custom_NN.")
         print("Not yet implemented.")  # TODO: Write code to build and train your custom neural net.
-        return None
+        return custom_nn
     elif ALGORITHM == "tf_net":
         print("Building and training TF_NN.")
         print("Not yet implemented.")  # TODO: Write code to build and train your keras neural net.
@@ -119,8 +141,7 @@ def runModel(data, model):
         return guesserClassifier(data)
     elif ALGORITHM == "custom_net":
         print("Testing Custom_NN.")
-        print("Not yet implemented.")  # TODO: Write code to run your custon neural net.
-        return None
+        return model.predict(data)
     elif ALGORITHM == "tf_net":
         print("Testing TF_NN.")
         print("Not yet implemented.")  # TODO: Write code to run your keras neural net.
