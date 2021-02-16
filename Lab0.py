@@ -28,51 +28,104 @@ ALGORITHM = "custom_net"
 
 
 class NeuralNetwork_2Layer():
-    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate=0.1):
+    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate=0.1, N=2, activationFunc="Sigmoid"):
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.neuronsPerLayer = neuronsPerLayer
         self.lr = learningRate
         self.W1 = np.random.randn(self.inputSize, self.neuronsPerLayer)
         self.W2 = np.random.randn(self.neuronsPerLayer, self.outputSize)
+        self.layer = N
+        self.activation = activationFunc
 
-    # Activation function.
+    # Activation function Sigmoid
     def __sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
 
-    # Activation prime function.
+    # MSE loss function used in debugging
+    def __mse(self, y, y_hat):
+        return np.sum((y_hat - y) ** 2) / y.shape[1]
+
+    # Activation prime function of Sigmoid
     def __sigmoidDerivative(self, x):
         return self.__sigmoid(x) * (1 - self.__sigmoid(x))
+
+    # Activation function ReLU
+    def __ReLU(self, x):
+        return np.maximum(0, x)
+
+    # Activation prime function of ReLU
+    def __ReLUDerivative(self, x):
+        x[x <= 0] = 0
+        x[x > 0] = 1
+        return x
 
     # Batch generator for mini-batches. Not randomized.
     def __batchGenerator(self, l, n):
         for i in range(0, len(l), n):
             yield l[i: i + n]
 
-    # Training with backpropagation.
-    def train(self, xVals, yVals, epochs=10, minibatches=True, mbs=100):
-        if minibatches is True:
-            pass
+    def __learningRate(self, epoch, total):
+        if epoch > 0.8 * total:
+            return self.lr * 0.1
+        elif epoch > 0.5 * total:
+            return self.lr * 0.5
         else:
-            for echo in range(0, epochs):
-                for sample in range(0, xVals.shape[0]):
+            return self.lr
+
+    # Training with backpropagation.
+    def train(self, xVals, yVals, epochs=10, minibatches=True, mbs=40):
+        if minibatches is True:
+            for epoch in range(0, epochs):
+                batch_x = self.__batchGenerator(xVals, mbs)
+                batch_y = self.__batchGenerator(yVals, mbs)
+                for sample in range(0, xVals.shape[0], mbs):
+                    small_batch_x = next(batch_x)
+                    small_batch_y = next(batch_y)
+                    L1out, L2out = self.__forward(small_batch_x)
+                    L2e = L2out - small_batch_y
+                    if self.activation == "Sigmoid":
+                        L2d = L2e * self.__sigmoidDerivative(L2out)
+                    elif self.activation == "ReLU":
+                        L2d = L2e * self.__ReLUDerivative(np.dot(L1out, self.W2))
+                    else:
+                        raise Exception("NO Activation function specified")
+
+                    L1e = np.dot(L2d, self.W2.T)
+
+                    if self.activation == "Sigmoid":
+                        L1d = L1e * self.__sigmoidDerivative(L1out)
+                    elif self.activation == "ReLU":
+                        L1d = L1e * self.__ReLUDerivative(np.dot(small_batch_x, self.W1))
+
+                    L1a = small_batch_x.T.dot(L1d) * self.__learningRate(epoch, epochs)
+                    L2a = L1out.T.dot(L2d) * self.__learningRate(epoch, epochs)
+                    self.W1 -= L1a
+                    self.W2 -= L2a
+                print("Epoch: ", epoch + 1)
+        else:
+            for epoch in range(0, epochs):
+                for sample in range(0, 1000):
+                #for sample in range(0, xVals.shape[0]):
                     L1out, L2out = self.__forward(xVals[[sample], :])
                     L2e = L2out - yVals[[sample], :]
-                    intermidiate = self.__sigmoidDerivative(np.dot(L1out, self.W2))
-                    L2d = L2e * self.__sigmoidDerivative(np.dot(L1out, self.W2))
-                    L1e = np.dot(L2d, self.W2)
-                    L1d = L1e * self.__sigmoidDerivative(np.dot(xVals[[sample], :], self.W1))
+                    L2d = L2e * self.__sigmoidDerivative(L2out)
+                    L1e = np.dot(L2d, self.W2.T)
+                    L1d = L1e * self.__sigmoidDerivative(L1out)
                     L1a = xVals[[sample], :].T.dot(L1d) * self.lr
                     L2a = L1out.T.dot(L2d) * self.lr
                     self.W1 -= L1a
                     self.W2 -= L2a
-
-        
+            print("Epoch: ", epoch)
 
     # Forward pass.
     def __forward(self, input):
-        layer1 = self.__sigmoid(np.dot(input, self.W1))
-        layer2 = self.__sigmoid(np.dot(layer1, self.W2))
+        if self.activation == "Sigmoid":
+            layer1 = self.__sigmoid(np.dot(input, self.W1))
+            layer2 = self.__sigmoid(np.dot(layer1, self.W2))
+        elif self.activation == "ReLU":
+            layer1 = self.__ReLU(np.dot(input, self.W1))
+            layer2 = self.__ReLU(np.dot(layer1, self.W2))
         return layer1, layer2
 
     # Predict.
@@ -123,8 +176,8 @@ def trainModel(data):
     if ALGORITHM == "guesser":
         return None  # Guesser has no model, as it is just guessing.
     elif ALGORITHM == "custom_net":
-        custom_nn = NeuralNetwork_2Layer(IMAGE_SIZE, 10, 512)
-        custom_nn.train(xTrain, yTrain, minibatches=False)
+        custom_nn = NeuralNetwork_2Layer(IMAGE_SIZE, 10, 512, activationFunc="ReLU")
+        custom_nn.train(xTrain, yTrain, minibatches=True)
         print("Building and training Custom_NN.")
         print("Not yet implemented.")  # TODO: Write code to build and train your custom neural net.
         return custom_nn
@@ -154,7 +207,7 @@ def evalResults(data, preds):  # TODO: Add F1 score confusion matrix here.
     xTest, yTest = data
     acc = 0
     for i in range(preds.shape[0]):
-        if np.array_equal(preds[i], yTest[i]):   acc = acc + 1
+        if np.argmax(preds[i], 0) == np.argmax(yTest[i], 0):   acc = acc + 1
     accuracy = acc / preds.shape[0]
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
