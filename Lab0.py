@@ -156,7 +156,7 @@ def getRawData():
 
 
 def preprocessData(raw):
-    ((xTrain, yTrain), (xTest, yTest)) = raw  # TODO: Add range reduction here (0-255 ==> 0.0-1.0).
+    ((xTrain, yTrain), (xTest, yTest)) = raw
     xTrain = xTrain.reshape((xTrain.shape[0], xTrain.shape[1] * xTrain.shape[2]))
     xTest = xTest.reshape((xTest.shape[0], xTest.shape[1] * xTest.shape[2]))
     xTrain = xTrain / 255.0
@@ -195,7 +195,7 @@ def trainModel(data):
         model.add(tf.keras.layers.Dense(10, activation=tf.nn.softmax))
         lossType = keras.losses.categorical_crossentropy
         model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
-        model.fit(xTrain, yTrain, epochs=10)
+        model.fit(xTrain, yTrain, epochs=5)
         return model
     else:
         raise ValueError("Algorithm not recognized.")
@@ -216,10 +216,50 @@ def runModel(data, model):
 
 def evalResults(data, preds):  # TODO: Add F1 score confusion matrix here.
     xTest, yTest = data
+
+    confusionMatrix = np.zeros((yTest.shape[1] + 1, yTest.shape[1] + 1)) # square matrix, +1 for total column and row
     acc = 0
+
     for i in range(preds.shape[0]):
-        if np.argmax(preds[i], 0) == np.argmax(yTest[i], 0):   acc = acc + 1
+        if np.argmax(preds[i], 0) == np.argmax(yTest[i], 0):
+            acc = acc + 1
+            confusionMatrix[np.argmax(preds[i], 0)][np.argmax(yTest[i], 0)] += 1
+        else:
+            confusionMatrix[np.argmax(preds[i], 0)][np.argmax(yTest[i], 0)] += 1
     accuracy = acc / preds.shape[0]
+
+    sumColumn = confusionMatrix.sum(axis=0)
+    sumRow = confusionMatrix.sum(axis=1)
+    for i in range(0, yTest.shape[1] + 1):
+        confusionMatrix[yTest.shape[1]][i] = sumColumn[i]
+        confusionMatrix[i][yTest.shape[1]] = sumRow[i]
+    confusionMatrix[yTest.shape[1]][yTest.shape[1]] = confusionMatrix.sum(axis=0)[yTest.shape[1]]
+
+    print("CONFUSION MATRIX")
+    space = "       "
+    print("      ", "0", space, "1", space,"2", space,"3", space,"4", space,"5", space,"6", space,"7", space,"8", space,"9", space, "TOTAL")
+    space = "     "
+    for i in range(confusionMatrix.shape[0]):
+        if i != confusionMatrix.shape[0] - 1:
+            print(i, space, end="")
+        else:
+            print("TOTAL  ", end="")
+        for j in range(confusionMatrix.shape[0]):
+            print(confusionMatrix[i][j], end=(10-len(confusionMatrix[i][j].__str__()))*" ")
+        print()
+    F1_score = []
+    for i in range(confusionMatrix.shape[0] - 1):
+        precision = confusionMatrix[i][i] / confusionMatrix[i][-1]
+        recall = confusionMatrix[i][i] / confusionMatrix[-1][i]
+        F1_score.append((2 * ((precision * recall) / (precision + recall))).__str__())
+    print()
+    print("F1-Score:")
+    print("      ", end="")
+    for i in range(len(F1_score)):
+        print("%.7s    " % F1_score[i], end="")
+    print()
+
+
 
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
