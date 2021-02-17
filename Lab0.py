@@ -181,10 +181,19 @@ def trainModel(data):
         return custom_nn
     elif ALGORITHM == "tf_net":
         print("Building and training TF_NN.")
-        model = keras.Sequential([tf.keras.layers.Flatten(), tf.keras.layers.Dense(512, activation=tf.nn.relu),
-                                  tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
+        model = keras.Sequential()
+        model.add(tf.keras.layers.Flatten())
+        model.add(tf.keras.layers.Dropout(0.2, input_shape=(IMAGE_SIZE,)))
+        model.add(tf.keras.layers.Dense(512, activation=tf.nn.relu))
+        model.add(tf.keras.layers.Dropout(0.2, input_shape=(512,)))
+        model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
+        model.add(tf.keras.layers.Dense(128, activation=tf.nn.relu))
+        model.add(tf.keras.layers.Dropout(0.5, input_shape=(128,)))
+        model.add(tf.keras.layers.Dense(64, activation=tf.nn.relu))
+        model.add(tf.keras.layers.Dense(32, activation=tf.nn.relu))
+        model.add(tf.keras.layers.Dropout(0.5, input_shape=(32,)))
+        model.add(tf.keras.layers.Dense(10, activation=tf.nn.softmax))
         lossType = keras.losses.categorical_crossentropy
-        inShape = (IMAGE_SIZE,)
         model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
         model.fit(xTrain, yTrain, epochs=10)
         return model
@@ -211,6 +220,7 @@ def evalResults(data, preds):  # TODO: Add F1 score confusion matrix here.
     for i in range(preds.shape[0]):
         if np.argmax(preds[i], 0) == np.argmax(yTest[i], 0):   acc = acc + 1
     accuracy = acc / preds.shape[0]
+
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
     print()
