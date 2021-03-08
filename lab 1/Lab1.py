@@ -15,9 +15,9 @@ tf.random.set_seed(1618)
 #tf.logging.set_verbosity(tf.logging.ERROR)   # Uncomment for TF1.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-ALGORITHM = "guesser"
+#ALGORITHM = "guesser"
 #ALGORITHM = "tf_net"
-#ALGORITHM = "tf_conv"
+ALGORITHM = "tf_conv"
 
 DATASET = "mnist_d"
 #DATASET = "mnist_f"
@@ -57,13 +57,46 @@ def guesserClassifier(xTest):
 
 
 def buildTFNeuralNet(x, y, eps = 6):
-    pass        #TODO: Implement a standard ANN here.
-    return None
+    #TODO: Implement a standard ANN here.
+    print("Building and training ANN.")
+    model = keras.Sequential()
+    model.add(tf.keras.layers.Dense(512, input_shape = (IS,), activation = tf.nn.relu))
+    model.add(tf.keras.layers.Dropout(0.3, input_shape=(IS,)))
+    model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
+    model.add(tf.keras.layers.Dropout(0.3, input_shape=(256,)))
+    model.add(tf.keras.layers.Dense(10, activation=tf.nn.softmax))
+    lossType = keras.losses.categorical_crossentropy
+    model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
+    model.fit(x, y, batch_size=40, epochs=eps)
+    return model
 
 
-def buildTFConvNet(x, y, eps = 10, dropout = True, dropRate = 0.2):
-    pass        #TODO: Implement a CNN here. dropout option is required.
-    return None
+def buildTFConvNet(x, y, eps = 10, dropout = True, dropRate = 0.3):
+    #TODO: Implement a CNN here. dropout option is required.
+    print("Building and training CNN.")
+    model = keras.Sequential()
+    model.add(keras.layers.Conv2D(32, kernel_size=3, activation='relu', input_shape=(IH, IW, IZ)))
+    model.add(keras.layers.Conv2D(32, kernel_size=3, activation='relu', input_shape=(IH, IW, IZ)))
+    model.add(keras.layers.MaxPool2D())
+
+    model.add(keras.layers.Conv2D(64, kernel_size=3, activation='relu'))
+    model.add(keras.layers.MaxPool2D())
+    if dropout:
+        model.add(keras.layers.Dropout(dropRate))
+
+    model.add(tf.keras.layers.Flatten())
+    if dropout:
+        model.add(keras.layers.Dropout(dropRate))
+    model.add(tf.keras.layers.Dense(512, activation=tf.nn.relu))
+    if dropout:
+        model.add(keras.layers.Dropout(dropRate))
+    model.add(tf.keras.layers.Dense(NUM_CLASSES, activation=tf.nn.softmax))
+    lossType = keras.losses.categorical_crossentropy
+    #opt = keras.optimizers.SGD(learning_rate=0.01, momentum=0.9, nesterov=True, clipnorm=1.0)
+    opt = keras.optimizers.Adam()
+    model.compile(optimizer=opt, loss=lossType, metrics=['accuracy'])
+    model.fit(x, y, batch_size=32, epochs=eps)
+    return model
 
 #=========================<Pipeline Functions>==================================
 
