@@ -22,9 +22,12 @@ ALGORITHM = "tf_conv"
 
 #DATASET = "mnist_d"
 #DATASET = "mnist_f"
-#DATASET = "cifar_10"
-DATASET = "cifar_100_f"
+DATASET = "cifar_10"
+#DATASET = "cifar_100_f"
 #DATASET = "cifar_100_c"
+
+# Flag: read from model file
+IMPORT_MODEL_FROM_FILE = True
 
 if DATASET == "mnist_d":
     NUM_CLASSES = 10
@@ -80,11 +83,15 @@ def buildTFNeuralNet(x, y, eps = 10):
     lossType = keras.losses.categorical_crossentropy
     model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
     model.fit(x, y, batch_size=128, epochs=eps)
+
+    model_name = DATASET + '_ANN_model'
+    model.save(model_name)
     return model
 
 
 def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.3):
     print("Building and training CNN.")
+    model_name = DATASET + '_CNN_model'
     if DATASET == "mnist_f" or DATASET == "cifar_10":
         # somehow these datasets works better without batch normalization and smaller cnn
         model = keras.Sequential()
@@ -117,6 +124,7 @@ def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.3):
         opt = keras.optimizers.Adam()
         model.compile(optimizer=opt, loss=lossType, metrics=['accuracy'])
         model.fit(x, y, batch_size=128, epochs=eps)
+        model.save(model_name)
         return model
 
     model = keras.Sequential()
@@ -145,6 +153,7 @@ def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.3):
     opt = keras.optimizers.Adam()
     model.compile(optimizer=opt, loss=lossType, metrics=['accuracy'])
     model.fit(x, y, batch_size=32, epochs=eps)
+    model.save(model_name)
     return model
 
 #=========================<Pipeline Functions>==================================
@@ -254,7 +263,13 @@ def evalResults(data, preds):
 def main():
     raw = getRawData()
     data = preprocessData(raw)
-    model = trainModel(data[0])
+    if IMPORT_MODEL_FROM_FILE:
+        if ALGORITHM == 'tf_net':
+            model = keras.models.load_model("./model/" + DATASET + '_ANN_model')
+        elif ALGORITHM == 'tf_conv':
+            model = keras.models.load_model("./model/" + DATASET + '_CNN_model')
+    else:
+        model = trainModel(data[0])
     preds = runModel(data[1][0], model)
     evalResults(data[1], preds)
 
