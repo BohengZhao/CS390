@@ -3,6 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import regularizers
 from tensorflow.keras.utils import to_categorical
 import random
 
@@ -19,10 +20,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 #ALGORITHM = "tf_net"
 ALGORITHM = "tf_conv"
 
-DATASET = "mnist_d"
+#DATASET = "mnist_d"
 #DATASET = "mnist_f"
 #DATASET = "cifar_10"
-#DATASET = "cifar_100_f"
+DATASET = "cifar_100_f"
 #DATASET = "cifar_100_c"
 
 if DATASET == "mnist_d":
@@ -38,11 +39,23 @@ elif DATASET == "mnist_f":
     IZ = 1
     IS = 784
 elif DATASET == "cifar_10":
-    pass                                 # TODO: Add this case.
+    NUM_CLASSES = 10
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = IH * IW * IZ
 elif DATASET == "cifar_100_f":
-    pass                                 # TODO: Add this case.
+    NUM_CLASSES = 100
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = IH * IW * IZ
 elif DATASET == "cifar_100_c":
-    pass                                 # TODO: Add this case.
+    NUM_CLASSES = 100
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = IH * IW * IZ
 
 
 #=========================<Classifier Functions>================================
@@ -56,30 +69,66 @@ def guesserClassifier(xTest):
     return np.array(ans)
 
 
-def buildTFNeuralNet(x, y, eps = 6):
-    #TODO: Implement a standard ANN here.
+def buildTFNeuralNet(x, y, eps = 10):
     print("Building and training ANN.")
     model = keras.Sequential()
     model.add(tf.keras.layers.Dense(512, input_shape = (IS,), activation = tf.nn.relu))
     model.add(tf.keras.layers.Dropout(0.3, input_shape=(IS,)))
     model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
     model.add(tf.keras.layers.Dropout(0.3, input_shape=(256,)))
-    model.add(tf.keras.layers.Dense(10, activation=tf.nn.softmax))
+    model.add(tf.keras.layers.Dense(NUM_CLASSES, activation=tf.nn.softmax))
     lossType = keras.losses.categorical_crossentropy
     model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
-    model.fit(x, y, batch_size=40, epochs=eps)
+    model.fit(x, y, batch_size=128, epochs=eps)
     return model
 
 
-def buildTFConvNet(x, y, eps = 10, dropout = True, dropRate = 0.3):
-    #TODO: Implement a CNN here. dropout option is required.
+def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.3):
     print("Building and training CNN.")
+    if DATASET == "mnist_f" or DATASET == "cifar_10":
+        # somehow these datasets works better without batch normalization and smaller cnn
+        model = keras.Sequential()
+        model.add(keras.layers.Conv2D(32, kernel_size=3, input_shape=(IH, IW, IZ), padding='same'))
+        model.add(keras.layers.Activation('relu'))
+        model.add(keras.layers.MaxPool2D())
+        if dropout:
+            model.add(keras.layers.Dropout(dropRate))
+
+        model.add(keras.layers.Conv2D(64, kernel_size=3, padding='same'))
+        model.add(keras.layers.Activation('relu'))
+        model.add(keras.layers.Conv2D(64, kernel_size=3, padding='same'))
+        model.add(keras.layers.Activation('relu'))
+        model.add(keras.layers.MaxPool2D())
+        if dropout:
+            model.add(keras.layers.Dropout(dropRate))
+
+        model.add(tf.keras.layers.Flatten())
+        if dropout:
+            model.add(keras.layers.Dropout(dropRate))
+        model.add(tf.keras.layers.Dense(512, activation=tf.nn.relu))
+        if dropout:
+            model.add(keras.layers.Dropout(dropRate))
+        model.add(tf.keras.layers.Dense(256, activation=tf.nn.relu))
+        if dropout:
+            model.add(keras.layers.Dropout(dropRate))
+        model.add(tf.keras.layers.Dense(NUM_CLASSES, activation=tf.nn.softmax))
+        lossType = keras.losses.categorical_crossentropy
+        #opt = keras.optimizers.SGD(learning_rate=0.01, momentum=0.9, nesterov=True)
+        opt = keras.optimizers.Adam()
+        model.compile(optimizer=opt, loss=lossType, metrics=['accuracy'])
+        model.fit(x, y, batch_size=128, epochs=eps)
+        return model
+
     model = keras.Sequential()
-    model.add(keras.layers.Conv2D(32, kernel_size=3, activation='relu', input_shape=(IH, IW, IZ)))
-    model.add(keras.layers.Conv2D(32, kernel_size=3, activation='relu', input_shape=(IH, IW, IZ)))
+    model.add(keras.layers.Conv2D(32, kernel_size=3, input_shape=(IH, IW, IZ), padding='same'))
+    model.add(keras.layers.Activation('relu'))
+    model.add(keras.layers.Conv2D(32, kernel_size=3, input_shape=(IH, IW, IZ), padding='same'))
+    model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.MaxPool2D())
 
-    model.add(keras.layers.Conv2D(64, kernel_size=3, activation='relu'))
+
+    model.add(keras.layers.Conv2D(64, kernel_size=3, padding='same'))
+    model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.MaxPool2D())
     if dropout:
         model.add(keras.layers.Dropout(dropRate))
@@ -108,11 +157,14 @@ def getRawData():
         mnist = tf.keras.datasets.fashion_mnist
         (xTrain, yTrain), (xTest, yTest) = mnist.load_data()
     elif DATASET == "cifar_10":
-        pass      # TODO: Add this case.
+        cifar_10 = tf.keras.datasets.cifar10
+        (xTrain, yTrain), (xTest, yTest) = cifar_10.load_data()
     elif DATASET == "cifar_100_f":
-        pass      # TODO: Add this case.
+        cifar_100 = tf.keras.datasets.cifar100
+        (xTrain, yTrain), (xTest, yTest) = cifar_100.load_data(label_mode='fine')
     elif DATASET == "cifar_100_c":
-        pass      # TODO: Add this case.
+        cifar_100 = tf.keras.datasets.cifar100
+        (xTrain, yTrain), (xTest, yTest) = cifar_100.load_data(label_mode='coarse')
     else:
         raise ValueError("Dataset not recognized.")
     print("Dataset: %s" % DATASET)
@@ -132,6 +184,10 @@ def preprocessData(raw):
     else:
         xTrainP = xTrain.reshape((xTrain.shape[0], IH, IW, IZ))
         xTestP = xTest.reshape((xTest.shape[0], IH, IW, IZ))
+
+    xTrainP = xTrainP / 255.0
+    xTestP = xTestP / 255.0
+
     yTrainP = to_categorical(yTrain, NUM_CLASSES)
     yTestP = to_categorical(yTest, NUM_CLASSES)
     print("New shape of xTrain dataset: %s." % str(xTrainP.shape))
@@ -206,3 +262,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
