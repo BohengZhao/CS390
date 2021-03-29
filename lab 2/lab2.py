@@ -21,8 +21,8 @@ tf.random.set_seed(1618)
 #tf.logging.set_verbosity(tf.logging.ERROR)   # Uncomment for TF1.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-CONTENT_IMG_PATH = "./pics/monster.jpg"
-STYLE_IMG_PATH = "./pics/style2.jpg"
+CONTENT_IMG_PATH = "./pics/monster2.jpg"
+STYLE_IMG_PATH = "./pics/style1.jpg"
 tf.compat.v1.disable_eager_execution()
 
 CONTENT_IMG_H = 500
@@ -31,12 +31,12 @@ CONTENT_IMG_W = 500
 STYLE_IMG_H = 500
 STYLE_IMG_W = 500
 
-CONTENT_WEIGHT = 0.08    # Alpha weight.
-STYLE_WEIGHT = 0.92      # Beta weight.
+CONTENT_WEIGHT = 0.0001    # Alpha weight.
+STYLE_WEIGHT = 0.9999      # Beta weight.
 STYLE_LAYER_WEIGHT = [0.2, 0.2, 0.2, 0.2, 0.2]
-TOTAL_WEIGHT = 1.0
+TOTAL_WEIGHT = 0.0005
 
-TRANSFER_ROUNDS = 4
+TRANSFER_ROUNDS = 5
 
 #=============================<Helper Fuctions>=================================
 '''
@@ -44,6 +44,7 @@ TODO: implement this.
 This function should take the tensor and re-convert it to an image.
 '''
 def deprocessImage(img):
+
     x = img.reshape((CONTENT_IMG_H, CONTENT_IMG_W, 3))
     # Remove zero-center by mean pixel
     x[:, :, 0] += 103.939
@@ -98,6 +99,11 @@ def preprocessData(raw):
         warnings.simplefilter("ignore")
         img = resize(img, (ih, iw, 3))
     img = img.astype("float64")
+
+    #imgsave = deprocessImage(img)
+    #saveFile = "Initial.png"
+    #imageio.imwrite(saveFile, img)
+
     img = np.expand_dims(img, axis=0)
     img = vgg19.preprocess_input(img)
     return img
@@ -142,7 +148,7 @@ def styleTransfer(cData, sData, tData):
         loss += styleLoss(styleOutput, genOutput) * STYLE_WEIGHT * STYLE_LAYER_WEIGHT[layer_index]
         layer_index += 1
 
-    loss += totalVariationLoss(tf.cast(genTensor, tf.float32))
+    loss += totalVariationLoss(tf.cast(genTensor, tf.float32)) * TOTAL_WEIGHT
     outputs = [loss]
 
     grads = K.gradients(loss, genPlaceholder)
@@ -154,12 +160,8 @@ def styleTransfer(cData, sData, tData):
     print("   Beginning transfer.")
     for i in range(TRANSFER_ROUNDS):
         print("   Step %d." % i)
-        saveFile = "Processess" + str(i + 1) + ".jpg"
-        x, tLoss, info = fmin_l_bfgs_b(func=kFunction, x0=x, maxiter=50)
+        x, tLoss, info = fmin_l_bfgs_b(func=kFunction, x0=x, maxiter=30)
         print("      Loss: %f." % tLoss)
-        y = copy.deepcopy(x)
-        img = deprocessImage(y)
-        imageio.imwrite(saveFile, img)
     img = deprocessImage(x)
     saveFile = "Transfer.png"
     imageio.imwrite(saveFile, img)
