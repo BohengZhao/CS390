@@ -21,8 +21,8 @@ tf.random.set_seed(1618)
 #tf.logging.set_verbosity(tf.logging.ERROR)   # Uncomment for TF1.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-CONTENT_IMG_PATH = "./pics/monster2.jpg"
-STYLE_IMG_PATH = "./pics/style1.jpg"
+CONTENT_IMG_PATH = "./pics/statue.jpg"
+STYLE_IMG_PATH = "./pics/style2.jpg"
 tf.compat.v1.disable_eager_execution()
 
 CONTENT_IMG_H = 500
@@ -31,12 +31,12 @@ CONTENT_IMG_W = 500
 STYLE_IMG_H = 500
 STYLE_IMG_W = 500
 
-CONTENT_WEIGHT = 0.0001    # Alpha weight.
-STYLE_WEIGHT = 0.9999      # Beta weight.
+CONTENT_WEIGHT = 0.00001    # Alpha weight.
+STYLE_WEIGHT = 0.99999      # Beta weight.
 STYLE_LAYER_WEIGHT = [0.2, 0.2, 0.2, 0.2, 0.2]
 TOTAL_WEIGHT = 0.0005
 
-TRANSFER_ROUNDS = 5
+TRANSFER_ROUNDS = 3
 
 #=============================<Helper Fuctions>=================================
 '''
@@ -160,7 +160,7 @@ def styleTransfer(cData, sData, tData):
     print("   Beginning transfer.")
     for i in range(TRANSFER_ROUNDS):
         print("   Step %d." % i)
-        x, tLoss, info = fmin_l_bfgs_b(func=kFunction, x0=x, maxiter=30)
+        x, tLoss, info = fmin_l_bfgs_b(func=kFunction, x0=x, maxiter=50)
         print("      Loss: %f." % tLoss)
     img = deprocessImage(x)
     saveFile = "Transfer.png"
